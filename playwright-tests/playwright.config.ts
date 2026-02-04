@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+export const STORAGE_STATE = "./auth/session.json";
+
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
@@ -26,28 +28,52 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    // baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3000',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
 
-  /* Configure projects for major browsers */
   projects: [
     {
-      name: 'chromium',
+      name: 'login',
       use: { ...devices['Desktop Chrome'] },
+      testMatch: '**/login.setup.ts'
     },
-
     {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      name: "teardown",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/global.teardown.ts",
     },
-
     {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      name: 'Logged in tests',
+      use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE },
+      dependencies: ['login'],
+      teardown: "teardown",
+      testMatch: '**/*.spec.ts',
+      testIgnore: '**/register.spec.ts',
     },
+    {
+      name: "Logged out tests",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: "**/register.spec.ts"
+    }
+
+    /* Configure projects for major browsers */
+    // {
+    //   name: 'chromium',
+    //   use: { ...devices['Desktop Chrome'] },
+    // },
+    //
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
+    //
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
 
     /* Test against mobile viewports. */
     // {

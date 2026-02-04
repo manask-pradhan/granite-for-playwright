@@ -9,7 +9,7 @@ test.describe("Register page", () => {
     const email = faker.internet.email();
     const password = faker.internet.password();
 
-    await page.goto("http://localhost:3000/");
+    await page.goto("/");
     await page.getByTestId("login-register-link").click();
     await page.getByTestId("signup-name-field").fill(username);
     await page.getByTestId("signup-email-field").fill(email);
