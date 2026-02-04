@@ -25,4 +25,12 @@ export default class TaskPage {
     await taskInDashboard.scrollIntoViewIfNeeded();
     await expect(taskInDashboard).toBeVisible();
   }
+
+  markTaskAsCompletedAndVerify = async ({ taskName }: { taskName: string }) => {
+    await this.page.getByTestId("tasks-pending-table").getByRole("row", { name: taskName }).getByRole("checkbox").click()
+
+    const completedTasksInDashboard = this.page.getByTestId("tasks-completed-table").getByRole("row", { name: taskName })
+    await completedTasksInDashboard.scrollIntoViewIfNeeded()
+    await expect(completedTasksInDashboard).toBeVisible()
+  }
 }

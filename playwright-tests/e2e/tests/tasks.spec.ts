@@ -14,13 +14,8 @@ test.describe("Tasks page", () => {
     await taskPage.createTaskAndVerify({ taskName })
   });
 
-  test("should be able to mark as completed", async ({ page, taskPage }) => {
+  test("should be able to mark as completed", async ({ taskPage }) => {
     await taskPage.createTaskAndVerify({ taskName })
-
-    await page.getByTestId("tasks-pending-table").getByRole("row", { name: taskName }).getByRole("checkbox").click()
-
-    const completedTaskInDashboard = page.getByTestId("tasks-completed-table").getByRole("row", { name: taskName })
-    await completedTaskInDashboard.scrollIntoViewIfNeeded()
-    await expect(completedTaskInDashboard).toBeVisible()
+    await taskPage.markTaskAsCompletedAndVerify({ taskName })
   })
 });
