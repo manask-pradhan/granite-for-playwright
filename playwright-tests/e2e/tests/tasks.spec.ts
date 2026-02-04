@@ -30,21 +30,25 @@ test.describe("Tasks page", () => {
     await expect(page.getByTestId("tasks-pending-table").getByRole("row", { name: taskName })).toBeHidden()
   })
 
-  test("should be able to star a pending task", async ({ taskPage }) => {
-    await taskPage.createTaskAndVerify({ taskName })
-    await taskPage.starTaskAndVerify({ taskName })
-  })
+  test.describe("starring task feature", () => {
+    test.describe.configure({ mode: "serial" })
 
-  test("should be able to un-star a pending task", async ({ page, taskPage }) => {
-    await taskPage.createTaskAndVerify({ taskName })
-    await taskPage.starTaskAndVerify({ taskName })
+    test("should be able to star a pending task", async ({ taskPage }) => {
+      await taskPage.createTaskAndVerify({ taskName })
+      await taskPage.starTaskAndVerify({ taskName })
+    })
 
-    const starIcon = page
-      .getByTestId("tasks-pending-table")
-      .getByRole("row", { name: taskName })
-      .getByTestId("pending-task-star-or-unstar-link")
+    test("should be able to un-star a pending task", async ({ page, taskPage }) => {
+      await taskPage.createTaskAndVerify({ taskName })
+      await taskPage.starTaskAndVerify({ taskName })
 
-    await starIcon.click()
-    await expect(starIcon).toHaveClass(/ri-star-line/i)
+      const starIcon = page
+        .getByTestId("tasks-pending-table")
+        .getByRole("row", { name: taskName })
+        .getByTestId("pending-task-star-or-unstar-link")
+
+      await starIcon.click()
+      await expect(starIcon).toHaveClass(/ri-star-line/i)
+    })
   })
 });
