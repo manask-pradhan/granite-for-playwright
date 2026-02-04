@@ -33,4 +33,17 @@ export default class TaskPage {
     await completedTasksInDashboard.scrollIntoViewIfNeeded()
     await expect(completedTasksInDashboard).toBeVisible()
   }
+
+  starTaskAndVerify = async ({ taskName }: { taskName: string }) => {
+    const starIcon = this.page
+      .getByTestId("tasks-pending-table")
+      .getByRole("row", { name: taskName })
+      .getByTestId("pending-task-star-or-unstar-link")
+
+    await starIcon.click()
+    await expect(starIcon).toHaveClass(/ri-star-fill/i)
+    await expect(
+      this.page.getByTestId("tasks-pending-table").getByRole("row").nth(1)
+    ).toContainText(taskName)
+  }
 }

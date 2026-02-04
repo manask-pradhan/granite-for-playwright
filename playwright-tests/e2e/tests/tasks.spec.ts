@@ -29,4 +29,22 @@ test.describe("Tasks page", () => {
     await expect(completedTask).toBeHidden()
     await expect(page.getByTestId("tasks-pending-table").getByRole("row", { name: taskName })).toBeHidden()
   })
+
+  test("should be able to star a pending task", async ({ taskPage }) => {
+    await taskPage.createTaskAndVerify({ taskName })
+    await taskPage.starTaskAndVerify({ taskName })
+  })
+
+  test("should be able to un-star a pending task", async ({ page, taskPage }) => {
+    await taskPage.createTaskAndVerify({ taskName })
+    await taskPage.starTaskAndVerify({ taskName })
+
+    const starIcon = page
+      .getByTestId("tasks-pending-table")
+      .getByRole("row", { name: taskName })
+      .getByTestId("pending-task-star-or-unstar-link")
+
+    await starIcon.click()
+    await expect(starIcon).toHaveClass(/ri-star-line/i)
+  })
 });
