@@ -1,6 +1,7 @@
 import { test } from "../fixtures";
 import { expect } from "@playwright/test";
 import { faker } from "@faker-js/faker";
+import LoginPage from "../poms/login";
 
 test.describe("Tasks page", () => {
   let taskName: string;
@@ -50,5 +51,34 @@ test.describe("Tasks page", () => {
       await starIcon.click()
       await expect(starIcon).toHaveClass(/ri-star-line/i)
     })
+  })
+
+  test("should create a new task with different user as the assignee", async ({ page, browser, taskPage }) => {
+    await taskPage.createTaskAndVerify({ taskName, userName: "Sam Smith" })
+
+    // Create a new browser context and a page in the browser
+    const newUserContext = await browser.newContext({
+      storageState: { cookies: [], origins: [] }
+    })
+    const newUserPage = await newUserContext.newPage()
+
+    // Initialize the Login POM as the fixture is configured to use the default context
+
+    const loginPage = new LoginPage(newUserPage);
+
+    await newUserPage.goto("/")
+    await loginPage.loginAndVerifyUser({
+      username: "Sam Smith",
+      email: "sam@example.com",
+      password: "welcome"
+    })
+
+    await expect(
+      newUserPage.getByTestId("tasks-pending-table").getByRole("row", { name: taskName })
+    ).toBeVisible()
+
+    // Close the context and page
+    await newUserPage.close()
+    await newUserContext.close()
   })
 });

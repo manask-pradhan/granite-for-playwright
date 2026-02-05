@@ -1,5 +1,13 @@
 import { expect, Page } from "@playwright/test";
 
+interface TaskName {
+  taskName: string;
+}
+
+interface CreateNewTaskProps extends TaskName {
+  userName?: string;
+}
+
 export default class TaskPage {
   page: Page
 
@@ -7,14 +15,14 @@ export default class TaskPage {
     this.page = page
   }
 
-  createTaskAndVerify = async ({ taskName }: { taskName: string }) => {
+  createTaskAndVerify = async ({ taskName, userName = "Oliver Smith" }: CreateNewTaskProps) => {
     await this.page.getByTestId("navbar-add-todo-link").click();
     await this.page.getByTestId("form-title-field").fill(taskName);
 
     await this.page.locator(".css-2b097c-container").click();
     await this.page
       .locator(".css-26l3qy-menu")
-      .getByText("Oliver Smith")
+      .getByText(userName)
       .click();
     await this.page.getByTestId("form-submit-button").click();
     const taskInDashboard = this.page
