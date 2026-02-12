@@ -8,6 +8,10 @@ interface CreateNewTaskProps extends TaskName {
   userName?: string;
 }
 
+interface TaskNameWithCommentCount extends TaskName {
+  commentCount: number;
+}
+
 export default class TaskPage {
   page: Page
 
@@ -34,15 +38,20 @@ export default class TaskPage {
     await expect(taskInDashboard).toBeVisible();
   }
 
-  markTaskAsCompletedAndVerify = async ({ taskName }: { taskName: string }) => {
-    await this.page.getByTestId("tasks-pending-table").getByRole("row", { name: taskName }).getByRole("checkbox").click()
+  markTaskAsCompletedAndVerify = async ({ taskName }: TaskName) => {
+    await expect(this.page.getByRole("heading", { name: "Loading..." })).toBeHidden()
 
     const completedTasksInDashboard = this.page.getByTestId("tasks-completed-table").getByRole("row", { name: taskName })
+
+    const isTaskCompleted = (await completedTasksInDashboard.count()) > 0
+    if (isTaskCompleted) return;
+
+    await this.page.getByTestId("tasks-pending-table").getByRole("row", { name: taskName }).getByRole("checkbox").click()
     await completedTasksInDashboard.scrollIntoViewIfNeeded()
     await expect(completedTasksInDashboard).toBeVisible()
   }
 
-  starTaskAndVerify = async ({ taskName }: { taskName: string }) => {
+  starTaskAndVerify = async ({ taskName }: TaskName) => {
     const starIcon = this.page
       .getByTestId("tasks-pending-table")
       .getByRole("row", { name: taskName })
@@ -53,5 +62,14 @@ export default class TaskPage {
     await expect(
       this.page.getByTestId("tasks-pending-table").getByRole("row").nth(1)
     ).toContainText(taskName)
+  }
+
+  openTaskDetailsPage = async ({ taskName }: TaskName) => {
+    return await this.page.getByTestId("tasks-pending-table").getByRole("row", { name: taskName }).getByText(taskName).click()
+  }
+
+  verifyCommentCount = async ({ taskName, commentCount }: TaskNameWithCommentCount) => {
+    const taskInDashboard = this.page.getByTestId("tasks-pending-table").getByRole("row", { name: new RegExp(taskName, "i") });
+    await expect(taskInDashboard.locator("td").nth(3)).toHaveText(commentCount.toString())
   }
 }
