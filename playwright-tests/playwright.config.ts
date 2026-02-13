@@ -1,6 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from "dotenv"
 
 export const STORAGE_STATE = "./auth/session.json";
+
+dotenv.config({ path: "./e2e/config/.env" })
 
 /**
  * Read environment variables from file.
