@@ -1,11 +1,32 @@
 import { test } from "../fixtures";
-import { expect } from "@playwright/test";
+import { Browser, BrowserContext, expect, Page } from "@playwright/test";
 import { faker } from "@faker-js/faker";
 import LoginPage from "../poms/login";
 import TaskPage from "../poms/tasks";
 import TaskDetailsPage from "../poms/taskDetails";
 import { COMMON_TEXTS, DASHBOARD_TEXTS } from "../constants/texts";
 import { TASK_TABLE_SELECTORS } from "../constants/selectors";
+
+interface NewUserContext {
+  page: Page
+  context: BrowserContext
+  loginPage: LoginPage
+  taskPage: TaskPage
+  taskDetailsPage: TaskDetailsPage
+}
+
+const createNewUserContext = async (browser: Browser): Promise<NewUserContext> => {
+  const context = await browser.newContext({
+    storageState: { cookies: [], origins: [] }
+  })
+  const page = await context.newPage()
+
+  const loginPage = new LoginPage(page)
+  const taskPage = new TaskPage(page)
+  const taskDetailsPage = new TaskDetailsPage(page)
+
+  return { context, page, loginPage, taskPage, taskDetailsPage }
+}
 
 test.describe("Tasks page", () => {
   let taskName: string;
@@ -66,20 +87,12 @@ test.describe("Tasks page", () => {
       taskPage.createTaskAndVerify({ taskName, userName: COMMON_TEXTS.standardUserName })
     )
 
-    // Create a new browser context and a page in the browser
-    const newUserContext = await browser.newContext({
-      storageState: { cookies: [], origins: [] }
-    })
-    const newUserPage = await newUserContext.newPage()
+    const newUser = await createNewUserContext(browser)
 
-    // Initialize the Login POM as the fixture is configured to use the default context
-
-    const loginPage = new LoginPage(newUserPage);
-
-    await test.step("Step 5: Visit login page as standard user", () => newUserPage.goto("/"))
+    await test.step("Step 5: Visit login page as standard user", () => newUser.page.goto("/"))
 
     await test.step("Step 6: Login as standard user", () =>
-      loginPage.loginAndVerifyUser({
+      newUser.loginPage.loginAndVerifyUser({
         username: COMMON_TEXTS.standardUserName,
         email: process.env.STANDARD_EMAIL!,
         password: process.env.STANDARD_PASSWORD!
@@ -88,13 +101,13 @@ test.describe("Tasks page", () => {
 
     await test.step("Step 7: Assert assigned task to visible to standard user", () =>
       expect(
-        newUserPage.getByTestId(TASK_TABLE_SELECTORS.pendingTasksTable).getByRole("row", { name: taskName })
+        newUser.page.getByTestId(TASK_TABLE_SELECTORS.pendingTasksTable).getByRole("row", { name: taskName })
       ).toBeVisible()
     )
 
     // Close the context and page
-    await newUserPage.close()
-    await newUserContext.close()
+    await newUser.page.close()
+    await newUser.context.close()
   })
 
   test.describe(`task comment feature ${COMMON_TEXTS.skipSetup}`, () => {
@@ -103,70 +116,70 @@ test.describe("Tasks page", () => {
 
     test.beforeEach(async ({ page, taskPage, taskDetailsPage }) => {
       comment = faker.word.words({ count: 10 })
-      await page.goto("/")
-      await taskPage.createTaskAndVerify({ taskName, userName: COMMON_TEXTS.standardUserName })
-      await taskPage.openTaskDetailsPage({ taskName })
-      await taskDetailsPage.createCommentAndVerify({ comment })
+
+      await test.step("Step 1: Go to dashboard", () => page.goto("/"))
+      await test.step("Step 2: Create task for standard user and verify", () =>
+        taskPage.createTaskAndVerify({ taskName, userName: COMMON_TEXTS.standardUserName })
+      )
+      await test.step("Step 3: Open task details page", () => taskPage.openTaskDetailsPage({ taskName }))
+      await test.step("Step 4: Create comment and verify", () => taskDetailsPage.createCommentAndVerify({ comment }))
     })
 
     test(`should add a new comment as a creator of the task ${COMMON_TEXTS.skipSetup}`, async ({ page, browser, taskPage }) => {
-      await page.goto("/")
-      await taskPage.verifyCommentCount({ taskName, commentCount: 1 })
+      await test.step("Step 1: Go to dashboard", () => page.goto("/"))
+      await test.step("Step 2: Verify initial comment count", () =>
+        taskPage.verifyCommentCount({ taskName, commentCount: 1 })
+      )
 
-      const assigneeUserContext = await browser.newContext({
-        storageState: { cookies: [], origins: [] }
-      })
-      const assigneeUserPage = await assigneeUserContext.newPage()
-      const loginPage = new LoginPage(assigneeUserPage)
-      const assigneeUserTaskPage = new TaskPage(assigneeUserPage)
-      const assigneeUserTaskDetailsPage = new TaskDetailsPage(assigneeUserPage)
+      const assigneeUser = await createNewUserContext(browser)
 
-      await assigneeUserPage.goto("/")
-      await loginPage.loginAndVerifyUser({
-        username: "Sam Smith",
-        email: "sam@example.com",
-        password: "welcome"
-      })
-      await assigneeUserTaskPage.openTaskDetailsPage({ taskName })
+      await test.step("Step 3: Visit login page as standard user", () => assigneeUser.page.goto("/"))
+      await test.step("Step 4: Login as standard user", () =>
+        assigneeUser.loginPage.loginAndVerifyUser({
+          username: COMMON_TEXTS.standardUserName,
+          email: process.env.STANDARD_EMAIL!,
+          password: process.env.STANDARD_PASSWORD!
+        })
+      )
+
+      await test.step("Step 5: Open task details page", () => assigneeUser.taskPage.openTaskDetailsPage({ taskName }))
       comment = faker.word.words({ count: 10 })
-      await assigneeUserTaskDetailsPage.createCommentAndVerify({ comment })
+      await test.step("Step 6: Create comment and verify", () => assigneeUser.taskDetailsPage.createCommentAndVerify({ comment }))
+      await test.step("Step 7: Go to dashboard", () => assigneeUser.page.goto("/"))
+      await test.step("Step 8: Verify comment count increased", () => assigneeUser.taskPage.verifyCommentCount({ taskName, commentCount: 2 }))
 
-      await assigneeUserPage.goto("/")
-      await assigneeUserTaskPage.verifyCommentCount({ taskName, commentCount: 2 })
-
-      await assigneeUserPage.close();
-      await assigneeUserContext.close();
+      await assigneeUser.page.close()
+      await assigneeUser.context.close()
     })
 
-    test("should be able to add a new comment as a assignee of the task [SKIP_SETUP]", async ({ page, browser, taskPage, taskDetailsPage }) => {
-      const assigneeUserContext = await browser.newContext({
-        storageState: { cookies: [], origins: [] }
-      })
-      const assigneeUserPage = await assigneeUserContext.newPage()
-      await assigneeUserPage.goto("/")
-      const assigneeLoginPage = new LoginPage(assigneeUserPage)
-      const assigneeUserTaskPage = new TaskPage(assigneeUserPage)
-      const assigneeUserTaskDetailsPage = new TaskDetailsPage(assigneeUserPage)
+    test(`should be able to add a new comment as a assignee of the task ${COMMON_TEXTS.skipSetup}`, async ({ page, browser, taskPage, taskDetailsPage }) => {
+      const assigneeUser = await createNewUserContext(browser)
 
-      await assigneeLoginPage.loginAndVerifyUser({
-        username: "Sam Smith",
-        email: "sam@example.com",
-        password: "welcome"
-      })
+      await test.step("Step 1: Visit login page as standard user", () => assigneeUser.page.goto("/"))
+      await test.step("Step 2: Login as standard user", () =>
+        assigneeUser.loginPage.loginAndVerifyUser({
+          username: COMMON_TEXTS.standardUserName,
+          email: process.env.STANDARD_EMAIL!,
+          password: process.env.STANDARD_PASSWORD!
+        })
+      )
 
-      await assigneeUserPage.goto("/")
-      await assigneeUserTaskPage.verifyCommentCount({ taskName, commentCount: 1 })
-      await assigneeUserTaskPage.openTaskDetailsPage({ taskName })
+      await test.step("Step 3: Go to dashboard", () => assigneeUser.page.goto("/"))
+      await test.step("Step 4: Verify initial comment count", () => assigneeUser.taskPage.verifyCommentCount({ taskName, commentCount: 1 }))
+      await test.step("Step 5: Open task details page", () => assigneeUser.taskPage.openTaskDetailsPage({ taskName }))
+
       comment = faker.word.words({ count: 10 })
-      await assigneeUserTaskDetailsPage.createCommentAndVerify({ comment })
+      await test.step("Step 6: Create comment and verify", () => assigneeUser.taskDetailsPage.createCommentAndVerify({ comment }))
 
-      await page.goto("/")
-      await taskPage.verifyCommentCount({ taskName, commentCount: 2 })
-      await taskPage.openTaskDetailsPage({ taskName })
-      await expect(taskDetailsPage.page.getByTestId("task-comment").filter({ hasText: comment })).toBeVisible()
+      await assigneeUser.page.close()
+      await assigneeUser.context.close()
 
-      await assigneeUserPage.close();
-      await assigneeUserContext.close();
+      await test.step("Step 7: Go to dashboard as creator", () => page.goto("/"))
+      await test.step("Step 8: Verify comment count increased", () => taskPage.verifyCommentCount({ taskName, commentCount: 2 }))
+      await test.step("Step 9: Open task details page as creator", () => taskPage.openTaskDetailsPage({ taskName }))
+      await test.step("Step 10: Verify comment is visible to creator", () =>
+        expect(taskDetailsPage.page.getByTestId("task-comment").filter({ hasText: comment })).toBeVisible()
+      )
     })
   })
 });
