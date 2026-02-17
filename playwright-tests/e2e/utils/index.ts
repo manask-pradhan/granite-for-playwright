@@ -1,7 +1,5 @@
-import test, { Page, BrowserContext, Browser } from "@playwright/test"
-import LoginPage from "../poms/login"
-import TaskDetailsPage from "../poms/taskDetails"
-import TaskPage from "../poms/tasks"
+import { Page, BrowserContext, Browser } from "@playwright/test"
+import { LoginPage, TaskDetailsPage, TaskPage } from "../poms";
 import { COMMON_TEXTS } from "../constants/texts"
 
 export interface NewUserContext {

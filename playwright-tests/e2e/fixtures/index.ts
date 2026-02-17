@@ -1,9 +1,7 @@
 // fixtures/index.ts
 
 import { test as base } from "@playwright/test";
-import LoginPage from "../poms/login";
-import TaskPage from "../poms/tasks";
-import TaskDetailsPage from "../poms/taskDetails";
+import { LoginPage, TaskDetailsPage, TaskPage } from "../poms";
 
 interface ExtendedFixtures {
   loginPage: LoginPage;
