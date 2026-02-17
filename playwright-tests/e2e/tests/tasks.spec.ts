@@ -1,32 +1,9 @@
 import { test } from "../fixtures";
-import { Browser, BrowserContext, expect, Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { faker } from "@faker-js/faker";
-import LoginPage from "../poms/login";
-import TaskPage from "../poms/tasks";
-import TaskDetailsPage from "../poms/taskDetails";
 import { COMMON_TEXTS, DASHBOARD_TEXTS } from "../constants/texts";
 import { TASK_TABLE_SELECTORS } from "../constants/selectors";
-
-interface NewUserContext {
-  page: Page
-  context: BrowserContext
-  loginPage: LoginPage
-  taskPage: TaskPage
-  taskDetailsPage: TaskDetailsPage
-}
-
-const createNewUserContext = async (browser: Browser): Promise<NewUserContext> => {
-  const context = await browser.newContext({
-    storageState: { cookies: [], origins: [] }
-  })
-  const page = await context.newPage()
-
-  const loginPage = new LoginPage(page)
-  const taskPage = new TaskPage(page)
-  const taskDetailsPage = new TaskDetailsPage(page)
-
-  return { context, page, loginPage, taskPage, taskDetailsPage }
-}
+import { createNewUserContext, loginAsStandardUser } from "../utils";
 
 test.describe("Tasks page", () => {
   let taskName: string;
@@ -89,17 +66,11 @@ test.describe("Tasks page", () => {
 
     const newUser = await createNewUserContext(browser)
 
-    await test.step("Step 5: Visit login page as standard user", () => newUser.page.goto("/"))
-
-    await test.step("Step 6: Login as standard user", () =>
-      newUser.loginPage.loginAndVerifyUser({
-        username: COMMON_TEXTS.standardUserName,
-        email: process.env.STANDARD_EMAIL!,
-        password: process.env.STANDARD_PASSWORD!
-      })
+    await test.step("Step 5: Login as standard user", () =>
+      loginAsStandardUser(newUser.page, newUser.loginPage)
     )
 
-    await test.step("Step 7: Assert assigned task to visible to standard user", () =>
+    await test.step("Step 6: Assert assigned task to visible to standard user", () =>
       expect(
         newUser.page.getByTestId(TASK_TABLE_SELECTORS.pendingTasksTable).getByRole("row", { name: taskName })
       ).toBeVisible()
@@ -133,20 +104,15 @@ test.describe("Tasks page", () => {
 
       const assigneeUser = await createNewUserContext(browser)
 
-      await test.step("Step 3: Visit login page as standard user", () => assigneeUser.page.goto("/"))
-      await test.step("Step 4: Login as standard user", () =>
-        assigneeUser.loginPage.loginAndVerifyUser({
-          username: COMMON_TEXTS.standardUserName,
-          email: process.env.STANDARD_EMAIL!,
-          password: process.env.STANDARD_PASSWORD!
-        })
+      await test.step("Step 3: Login as standard user", () =>
+        loginAsStandardUser(assigneeUser.page, assigneeUser.loginPage)
       )
 
-      await test.step("Step 5: Open task details page", () => assigneeUser.taskPage.openTaskDetailsPage({ taskName }))
+      await test.step("Step 4: Open task details page", () => assigneeUser.taskPage.openTaskDetailsPage({ taskName }))
       comment = faker.word.words({ count: 10 })
-      await test.step("Step 6: Create comment and verify", () => assigneeUser.taskDetailsPage.createCommentAndVerify({ comment }))
-      await test.step("Step 7: Go to dashboard", () => assigneeUser.page.goto("/"))
-      await test.step("Step 8: Verify comment count increased", () => assigneeUser.taskPage.verifyCommentCount({ taskName, commentCount: 2 }))
+      await test.step("Step 5: Create comment and verify", () => assigneeUser.taskDetailsPage.createCommentAndVerify({ comment }))
+      await test.step("Step 6: Go to dashboard", () => assigneeUser.page.goto("/"))
+      await test.step("Step 7: Verify comment count increased", () => assigneeUser.taskPage.verifyCommentCount({ taskName, commentCount: 2 }))
 
       await assigneeUser.page.close()
       await assigneeUser.context.close()
@@ -155,29 +121,24 @@ test.describe("Tasks page", () => {
     test(`should be able to add a new comment as a assignee of the task ${COMMON_TEXTS.skipSetup}`, async ({ page, browser, taskPage, taskDetailsPage }) => {
       const assigneeUser = await createNewUserContext(browser)
 
-      await test.step("Step 1: Visit login page as standard user", () => assigneeUser.page.goto("/"))
-      await test.step("Step 2: Login as standard user", () =>
-        assigneeUser.loginPage.loginAndVerifyUser({
-          username: COMMON_TEXTS.standardUserName,
-          email: process.env.STANDARD_EMAIL!,
-          password: process.env.STANDARD_PASSWORD!
-        })
+      await test.step("Step 1: Login as standard user", () =>
+        loginAsStandardUser(assigneeUser.page, assigneeUser.loginPage)
       )
 
-      await test.step("Step 3: Go to dashboard", () => assigneeUser.page.goto("/"))
-      await test.step("Step 4: Verify initial comment count", () => assigneeUser.taskPage.verifyCommentCount({ taskName, commentCount: 1 }))
-      await test.step("Step 5: Open task details page", () => assigneeUser.taskPage.openTaskDetailsPage({ taskName }))
+      await test.step("Step 2: Go to dashboard", () => assigneeUser.page.goto("/"))
+      await test.step("Step 3: Verify initial comment count", () => assigneeUser.taskPage.verifyCommentCount({ taskName, commentCount: 1 }))
+      await test.step("Step 4: Open task details page", () => assigneeUser.taskPage.openTaskDetailsPage({ taskName }))
 
       comment = faker.word.words({ count: 10 })
-      await test.step("Step 6: Create comment and verify", () => assigneeUser.taskDetailsPage.createCommentAndVerify({ comment }))
+      await test.step("Step 5: Create comment and verify", () => assigneeUser.taskDetailsPage.createCommentAndVerify({ comment }))
 
       await assigneeUser.page.close()
       await assigneeUser.context.close()
 
-      await test.step("Step 7: Go to dashboard as creator", () => page.goto("/"))
-      await test.step("Step 8: Verify comment count increased", () => taskPage.verifyCommentCount({ taskName, commentCount: 2 }))
-      await test.step("Step 9: Open task details page as creator", () => taskPage.openTaskDetailsPage({ taskName }))
-      await test.step("Step 10: Verify comment is visible to creator", () =>
+      await test.step("Step 6: Go to dashboard as creator", () => page.goto("/"))
+      await test.step("Step 7: Verify comment count increased", () => taskPage.verifyCommentCount({ taskName, commentCount: 2 }))
+      await test.step("Step 8: Open task details page as creator", () => taskPage.openTaskDetailsPage({ taskName }))
+      await test.step("Step 9: Verify comment is visible to creator", () =>
         expect(taskDetailsPage.page.getByTestId("task-comment").filter({ hasText: comment })).toBeVisible()
       )
     })
